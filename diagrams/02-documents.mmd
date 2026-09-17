@@ -1,0 +1,22 @@
+flowchart TD
+    validate["Cloud Functions: validação"]
+    convert["Cloud Run: conversor de documentos"]
+    store["Cloud Storage: artefatos de documentos"]
+    vision["Cloud Vision: OCR"]
+    vertex["Vertex AI: Gemini"]
+    mail["Gmail"]
+    inbox["Cloud Functions: processamento da caixa de entrada"]
+    drive["Google Drive: correções e referências"]
+    reprocess["Cloud Functions: processamento de correções"]
+    topic["Pub/Sub: solicitações recebidas"]
+    validate -. "solicitação de conversão" .-> convert
+    convert -->|"ler e gravar arquivos"| store
+    validate -->|"extração de texto de imagens"| vision
+    validate -->|"interpretação de documentos"| vertex
+    drive -->|"modelos e dados de referência"| validate
+    validate -->|"notificação de correção"| mail
+    mail -->|"anexos das respostas"| inbox
+    inbox -->|"arquivos corrigidos"| drive
+    drive -->|"entradas substitutas"| reprocess
+    reprocess -->|"atualizar artefatos da solicitação"| store
+    reprocess -->|"republicar solicitação"| topic

@@ -1,0 +1,19 @@
+flowchart TD
+    schedule["Cloud Scheduler"]
+    intake["Cloud Functions: ingestão"]
+    api["API de controle de solicitações"]
+    store["Cloud Storage: pontos de controle e artefatos"]
+    incoming["Pub/Sub: solicitações recebidas"]
+    validate["Cloud Functions: validação"]
+    work["Pub/Sub: filas de operações"]
+    vm["Compute Engine: processadores de navegador"]
+    erp["Plataforma corporativa de compras"]
+    schedule -. "HTTP agendado" .-> intake
+    intake -->|"ler e avançar marcador"| store
+    intake -. "solicitar janela de tempo" .-> api
+    api -. "contrato de entrega solicitado" .-> incoming
+    incoming -->|"conteúdo enviado por HTTP"| validate
+    validate -->|"estado dos documentos"| store
+    validate -->|"conteúdo validado da operação"| work
+    work -->|"busca e roteamento por conta"| vm
+    vm -. "ações no navegador" .-> erp

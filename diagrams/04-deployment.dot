@@ -1,0 +1,29 @@
+digraph G {
+graph [rankdir=TB, bgcolor="transparent", pad="0.4", nodesep="0.45", ranksep="0.7", splines=polyline, fontname="Arial", outputorder=edgesfirst];
+node [shape=box, style="rounded,filled", fontname="Arial", fontsize=15, fontcolor="#102B44", color="#BFCFE1", penwidth=1.2, margin="0.24,0.17"];
+edge [fontname="Arial", fontsize=12, fontcolor="#34516D", color="#496C95", arrowsize=0.7, penwidth=1.2];
+build [label="Cloud Build", fillcolor="#EEF1FC"];
+registry [label="Artifact Registry", fillcolor="#EDF2F8"];
+run [label="Cloud Run:\nconversor", fillcolor="#DAE6FF"];
+functions [label="Cloud Functions:\nserviços HTTP", fillcolor="#E7EFFF"];
+config [label="Cloud Storage:\nconfiguração", fillcolor="#EDF2F8"];
+iam [label="IAM:\ncontas de serviço e OIDC", fillcolor="#EEF1FC"];
+secrets [label="Secret Manager", fillcolor="#EDF2F8"];
+admin [label="Script administrativo de implantação", fillcolor="#FFFFFF"];
+iap [label="IAP:\ntúnel documentado", fillcolor="#F1F2F6", style="rounded,dashed,filled"];
+vm [label="Compute Engine:\nprocessadores", fillcolor="#DAE6FF"];
+logs [label="Cloud Logging:\ncoleta da plataforma esperada", fillcolor="#F1F2F6", style="rounded,dashed,filled"];
+config -> build [label="entradas de configuração", style=solid];
+build -> registry [label="compilar e enviar imagem", style=solid];
+registry -> run [label="imagem de contêiner", style=solid];
+build -> run [label="comando de implantação", style=dashed];
+build -> functions [label="comandos de implantação", style=dashed];
+iam -> functions [label="identidades de execução e chamada", style=dashed];
+iam -> run [label="identidade de execução", style=dashed];
+secrets -> functions [label="obtenção de credenciais", style=solid];
+secrets -> vm [label="obtenção de credenciais dos processadores", style=solid];
+admin -> iap [label="exige túnel existente", style=dashed, color="#788795", fontcolor="#526477"];
+iap -> vm [label="acesso SSH documentado", style=dashed, color="#788795", fontcolor="#526477"];
+functions -> logs [label="coleta de saída padrão esperada", style=dashed, color="#788795", fontcolor="#526477"];
+run -> logs [label="coleta de saída padrão esperada", style=dashed, color="#788795", fontcolor="#526477"];
+}

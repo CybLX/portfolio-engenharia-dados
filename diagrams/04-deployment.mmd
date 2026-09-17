@@ -1,0 +1,25 @@
+flowchart TD
+    build["Cloud Build"]
+    registry["Artifact Registry"]
+    run["Cloud Run: conversor"]
+    functions["Cloud Functions: serviços HTTP"]
+    config["Cloud Storage: configuração"]
+    iam["IAM: contas de serviço e OIDC"]
+    secrets["Secret Manager"]
+    admin["Script administrativo de implantação"]
+    iap["IAP: túnel documentado"]
+    vm["Compute Engine: processadores"]
+    logs["Cloud Logging: coleta da plataforma esperada"]
+    config -->|"entradas de configuração"| build
+    build -->|"compilar e enviar imagem"| registry
+    registry -->|"imagem de contêiner"| run
+    build -. "comando de implantação" .-> run
+    build -. "comandos de implantação" .-> functions
+    iam -. "identidades de execução e chamada" .-> functions
+    iam -. "identidade de execução" .-> run
+    secrets -->|"obtenção de credenciais"| functions
+    secrets -->|"obtenção de credenciais dos processadores"| vm
+    admin -. "exige túnel existente" .-> iap
+    iap -. "acesso SSH documentado" .-> vm
+    functions -. "coleta de saída padrão esperada" .-> logs
+    run -. "coleta de saída padrão esperada" .-> logs

@@ -1,0 +1,23 @@
+flowchart TD
+    vm["Compute Engine: processadores de navegador"]
+    done["Pub/Sub: eventos de conclusão"]
+    final["Cloud Functions: finalizador"]
+    store["Cloud Storage: planilhas parciais e finais"]
+    transfer["Pub/Sub: tarefas de transferência de arquivos"]
+    sender["Cloud Functions: entrega ao Drive"]
+    drive["Google Drive: arquivos de saída"]
+    api["API de controle de solicitações"]
+    status["Pub/Sub: eventos compartilhados de status"]
+    ack["Falha tratada: status e confirmação"]
+    vm -->|"resultados de criação e regularização"| done
+    done -->|"envio HTTP"| final
+    store -->|"ler estado da planilha"| final
+    final -->|"gravar resultados dos lotes"| store
+    final -->|"arquivos concluídos ou para correção"| transfer
+    transfer -->|"envio HTTP"| sender
+    sender -->|"entregar arquivos"| drive
+    final -. "solicitar encerramento" .-> api
+    vm -->|"status da operação"| status
+    final -->|"status da finalização"| status
+    vm -. "caminho de exceção" .-> ack
+    final -. "erros tratados e inesperados" .-> ack

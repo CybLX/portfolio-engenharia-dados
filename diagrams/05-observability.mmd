@@ -1,0 +1,19 @@
+flowchart TD
+    events["Pub/Sub: eventos compartilhados de status"]
+    boundary["Consumidor compartilhado de status: fora da exportação"]
+    bq["BigQuery: visões de relatórios operacionais"]
+    schedule["Cloud Scheduler"]
+    report["Cloud Functions: geração de relatórios"]
+    drive["Google Drive: relatórios CSV"]
+    monitor["Cloud Functions: monitor operacional"]
+    metrics["Cloud Monitoring: métricas do Pub/Sub"]
+    chat["Google Chat: notificações"]
+    events -. "contrato de integração de status" .-> boundary
+    boundary -. "implementação da persistência não fornecida" .-> bq
+    schedule -. "HTTP agendado" .-> report
+    bq -->|"resultados de consultas"| report
+    report -->|"publicação de CSV"| drive
+    schedule -. "HTTP agendado" .-> monitor
+    metrics -->|"volume pendente e idade das mensagens"| monitor
+    bq -->|"atividade mais recente dos processadores"| monitor
+    monitor -->|"resumo de status"| chat

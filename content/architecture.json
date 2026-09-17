@@ -1,0 +1,621 @@
+[
+  {
+    "id": "01-intake",
+    "title": "Entrada e roteamento de operações",
+    "summary": "A ingestão agendada solicita a uma API externa de controle a obtenção de solicitações. O Pub/Sub as entrega à validação, e as operações validadas chegam aos processadores em máquinas virtuais por filas separadas.",
+    "detail": "As conexões contínuas transportam dados ou mensagens. As tracejadas representam chamadas de controle. A conexão da API externa com o tópico é um contrato de integração solicitado: a implementação dessa API está fora do código fornecido. O processamento de documentos e a conclusão são detalhados nas outras visões.",
+    "nodes": [
+      [
+        "schedule",
+        "Cloud Scheduler",
+        "control"
+      ],
+      [
+        "intake",
+        "Cloud Functions: ingestão",
+        "function"
+      ],
+      [
+        "api",
+        "API de controle de solicitações",
+        "external"
+      ],
+      [
+        "store",
+        "Cloud Storage: pontos de controle e artefatos",
+        "storage"
+      ],
+      [
+        "incoming",
+        "Pub/Sub: solicitações recebidas",
+        "queue"
+      ],
+      [
+        "validate",
+        "Cloud Functions: validação",
+        "function"
+      ],
+      [
+        "work",
+        "Pub/Sub: filas de operações",
+        "queue"
+      ],
+      [
+        "vm",
+        "Compute Engine: processadores de navegador",
+        "compute"
+      ],
+      [
+        "erp",
+        "Plataforma corporativa de compras",
+        "external"
+      ]
+    ],
+    "edges": [
+      [
+        "schedule",
+        "intake",
+        "HTTP agendado",
+        "control"
+      ],
+      [
+        "intake",
+        "store",
+        "ler e avançar marcador",
+        "data"
+      ],
+      [
+        "intake",
+        "api",
+        "solicitar janela de tempo",
+        "control"
+      ],
+      [
+        "api",
+        "incoming",
+        "contrato de entrega solicitado",
+        "contract"
+      ],
+      [
+        "incoming",
+        "validate",
+        "conteúdo enviado por HTTP",
+        "data"
+      ],
+      [
+        "validate",
+        "store",
+        "estado dos documentos",
+        "data"
+      ],
+      [
+        "validate",
+        "work",
+        "conteúdo validado da operação",
+        "data"
+      ],
+      [
+        "work",
+        "vm",
+        "busca e roteamento por conta",
+        "data"
+      ],
+      [
+        "vm",
+        "erp",
+        "ações no navegador",
+        "control"
+      ]
+    ]
+  },
+  {
+    "id": "02-documents",
+    "title": "Interpretação e correção de documentos",
+    "summary": "Conversão de documentos, OCR e interpretação por modelo apoiam a validação. Anexos corrigidos recebidos por e-mail podem ser colocados no Drive, processados novamente e republicados.",
+    "detail": "São caminhos condicionais, não uma sequência fixa para todas as solicitações. O Gemini é usado pelo Vertex AI. O Cloud Vision fornece OCR de imagens; o texto de PDFs também pode ser extraído localmente. Os processadores de correções e da caixa de entrada existem, mas a configuração completa de seus acionamentos recorrentes não foi fornecida.",
+    "nodes": [
+      [
+        "validate",
+        "Cloud Functions: validação",
+        "function"
+      ],
+      [
+        "convert",
+        "Cloud Run: conversor de documentos",
+        "compute"
+      ],
+      [
+        "store",
+        "Cloud Storage: artefatos de documentos",
+        "storage"
+      ],
+      [
+        "vision",
+        "Cloud Vision: OCR",
+        "ai"
+      ],
+      [
+        "vertex",
+        "Vertex AI: Gemini",
+        "ai"
+      ],
+      [
+        "mail",
+        "Gmail",
+        "external"
+      ],
+      [
+        "inbox",
+        "Cloud Functions: processamento da caixa de entrada",
+        "function"
+      ],
+      [
+        "drive",
+        "Google Drive: correções e referências",
+        "external"
+      ],
+      [
+        "reprocess",
+        "Cloud Functions: processamento de correções",
+        "function"
+      ],
+      [
+        "topic",
+        "Pub/Sub: solicitações recebidas",
+        "queue"
+      ]
+    ],
+    "edges": [
+      [
+        "validate",
+        "convert",
+        "solicitação de conversão",
+        "control"
+      ],
+      [
+        "convert",
+        "store",
+        "ler e gravar arquivos",
+        "data"
+      ],
+      [
+        "validate",
+        "vision",
+        "extração de texto de imagens",
+        "data"
+      ],
+      [
+        "validate",
+        "vertex",
+        "interpretação de documentos",
+        "data"
+      ],
+      [
+        "drive",
+        "validate",
+        "modelos e dados de referência",
+        "data"
+      ],
+      [
+        "validate",
+        "mail",
+        "notificação de correção",
+        "data"
+      ],
+      [
+        "mail",
+        "inbox",
+        "anexos das respostas",
+        "data"
+      ],
+      [
+        "inbox",
+        "drive",
+        "arquivos corrigidos",
+        "data"
+      ],
+      [
+        "drive",
+        "reprocess",
+        "entradas substitutas",
+        "data"
+      ],
+      [
+        "reprocess",
+        "store",
+        "atualizar artefatos da solicitação",
+        "data"
+      ],
+      [
+        "reprocess",
+        "topic",
+        "republicar solicitação",
+        "data"
+      ]
+    ]
+  },
+  {
+    "id": "03-completion",
+    "title": "Conclusão e tratamento de falhas",
+    "summary": "Os processadores publicam resultados dos lotes. O finalizador atualiza as planilhas das solicitações e encaminha arquivos para entrega. Falhas tratadas são registradas e confirmadas em vários caminhos do código.",
+    "detail": "A proteção pelo nome da planilha detecta algumas tentativas repetidas de finalização, mas não oferece reserva atômica entre chamadas concorrentes. Tanto o caminho de exceção da máquina virtual quanto o finalizador podem confirmar operações com falha. A persistência compartilhada de status é uma dependência externa, e os arquivos exportados não estabelecem uma fila de mensagens não processadas.",
+    "nodes": [
+      [
+        "vm",
+        "Compute Engine: processadores de navegador",
+        "compute"
+      ],
+      [
+        "done",
+        "Pub/Sub: eventos de conclusão",
+        "queue"
+      ],
+      [
+        "final",
+        "Cloud Functions: finalizador",
+        "function"
+      ],
+      [
+        "store",
+        "Cloud Storage: planilhas parciais e finais",
+        "storage"
+      ],
+      [
+        "transfer",
+        "Pub/Sub: tarefas de transferência de arquivos",
+        "queue"
+      ],
+      [
+        "sender",
+        "Cloud Functions: entrega ao Drive",
+        "function"
+      ],
+      [
+        "drive",
+        "Google Drive: arquivos de saída",
+        "external"
+      ],
+      [
+        "api",
+        "API de controle de solicitações",
+        "external"
+      ],
+      [
+        "status",
+        "Pub/Sub: eventos compartilhados de status",
+        "queue"
+      ],
+      [
+        "ack",
+        "Falha tratada: status e confirmação",
+        "control"
+      ]
+    ],
+    "edges": [
+      [
+        "vm",
+        "done",
+        "resultados de criação e regularização",
+        "data"
+      ],
+      [
+        "done",
+        "final",
+        "envio HTTP",
+        "data"
+      ],
+      [
+        "store",
+        "final",
+        "ler estado da planilha",
+        "data"
+      ],
+      [
+        "final",
+        "store",
+        "gravar resultados dos lotes",
+        "data"
+      ],
+      [
+        "final",
+        "transfer",
+        "arquivos concluídos ou para correção",
+        "data"
+      ],
+      [
+        "transfer",
+        "sender",
+        "envio HTTP",
+        "data"
+      ],
+      [
+        "sender",
+        "drive",
+        "entregar arquivos",
+        "data"
+      ],
+      [
+        "final",
+        "api",
+        "solicitar encerramento",
+        "control"
+      ],
+      [
+        "vm",
+        "status",
+        "status da operação",
+        "data"
+      ],
+      [
+        "final",
+        "status",
+        "status da finalização",
+        "data"
+      ],
+      [
+        "vm",
+        "ack",
+        "caminho de exceção",
+        "control"
+      ],
+      [
+        "final",
+        "ack",
+        "erros tratados e inesperados",
+        "control"
+      ]
+    ]
+  },
+  {
+    "id": "04-deployment",
+    "title": "Implantação e acesso",
+    "summary": "O Cloud Build define a implantação de contêineres e funções. O Artifact Registry armazena a imagem do conversor. A implantação nas máquinas virtuais usa um caminho administrativo separado e documentado.",
+    "detail": "O gatilho de compilação, o provisionamento das máquinas virtuais, as atribuições de papéis e as políticas de recursos estão fora dos arquivos fornecidos. O uso de contas de serviço e OIDC é explícito; o menor privilégio não foi verificado. O IAP é um pré-requisito documentado do script de implantação nas máquinas virtuais. A coleta gerenciada pelo Cloud Logging é esperada pelo comportamento da plataforma; destinos personalizados e exportação de registros das máquinas virtuais não são mostrados.",
+    "nodes": [
+      [
+        "build",
+        "Cloud Build",
+        "control"
+      ],
+      [
+        "registry",
+        "Artifact Registry",
+        "storage"
+      ],
+      [
+        "run",
+        "Cloud Run: conversor",
+        "compute"
+      ],
+      [
+        "functions",
+        "Cloud Functions: serviços HTTP",
+        "function"
+      ],
+      [
+        "config",
+        "Cloud Storage: configuração",
+        "storage"
+      ],
+      [
+        "iam",
+        "IAM: contas de serviço e OIDC",
+        "control"
+      ],
+      [
+        "secrets",
+        "Secret Manager",
+        "storage"
+      ],
+      [
+        "admin",
+        "Script administrativo de implantação",
+        "external"
+      ],
+      [
+        "iap",
+        "IAP: túnel documentado",
+        "documented"
+      ],
+      [
+        "vm",
+        "Compute Engine: processadores",
+        "compute"
+      ],
+      [
+        "logs",
+        "Cloud Logging: coleta da plataforma esperada",
+        "inferred"
+      ]
+    ],
+    "edges": [
+      [
+        "config",
+        "build",
+        "entradas de configuração",
+        "data"
+      ],
+      [
+        "build",
+        "registry",
+        "compilar e enviar imagem",
+        "data"
+      ],
+      [
+        "registry",
+        "run",
+        "imagem de contêiner",
+        "data"
+      ],
+      [
+        "build",
+        "run",
+        "comando de implantação",
+        "control"
+      ],
+      [
+        "build",
+        "functions",
+        "comandos de implantação",
+        "control"
+      ],
+      [
+        "iam",
+        "functions",
+        "identidades de execução e chamada",
+        "control"
+      ],
+      [
+        "iam",
+        "run",
+        "identidade de execução",
+        "control"
+      ],
+      [
+        "secrets",
+        "functions",
+        "obtenção de credenciais",
+        "data"
+      ],
+      [
+        "secrets",
+        "vm",
+        "obtenção de credenciais dos processadores",
+        "data"
+      ],
+      [
+        "admin",
+        "iap",
+        "exige túnel existente",
+        "contract"
+      ],
+      [
+        "iap",
+        "vm",
+        "acesso SSH documentado",
+        "contract"
+      ],
+      [
+        "functions",
+        "logs",
+        "coleta de saída padrão esperada",
+        "contract"
+      ],
+      [
+        "run",
+        "logs",
+        "coleta de saída padrão esperada",
+        "contract"
+      ]
+    ]
+  },
+  {
+    "id": "05-observability",
+    "title": "Relatórios e visibilidade operacional",
+    "summary": "A geração agendada de relatórios lê visões do BigQuery e entrega arquivos CSV ao Drive. O monitoramento combina métricas do Pub/Sub com a atividade dos processadores e envia uma notificação à equipe.",
+    "detail": "As mensagens de status são publicadas em uma interface de controle compartilhada. O componente que grava no BigQuery não está incluído, por isso sua persistência é mostrada como integração não verificada. O código de monitoramento lê a idade das mensagens e o volume pendente, mas alguns nomes de assinaturas diferem das filas provisionadas por conta. Os diagramas não afirmam cobertura completa de alertas.",
+    "nodes": [
+      [
+        "events",
+        "Pub/Sub: eventos compartilhados de status",
+        "queue"
+      ],
+      [
+        "boundary",
+        "Consumidor compartilhado de status: fora da exportação",
+        "external"
+      ],
+      [
+        "bq",
+        "BigQuery: visões de relatórios operacionais",
+        "storage"
+      ],
+      [
+        "schedule",
+        "Cloud Scheduler",
+        "control"
+      ],
+      [
+        "report",
+        "Cloud Functions: geração de relatórios",
+        "function"
+      ],
+      [
+        "drive",
+        "Google Drive: relatórios CSV",
+        "external"
+      ],
+      [
+        "monitor",
+        "Cloud Functions: monitor operacional",
+        "function"
+      ],
+      [
+        "metrics",
+        "Cloud Monitoring: métricas do Pub/Sub",
+        "control"
+      ],
+      [
+        "chat",
+        "Google Chat: notificações",
+        "external"
+      ]
+    ],
+    "edges": [
+      [
+        "events",
+        "boundary",
+        "contrato de integração de status",
+        "contract"
+      ],
+      [
+        "boundary",
+        "bq",
+        "implementação da persistência não fornecida",
+        "contract"
+      ],
+      [
+        "schedule",
+        "report",
+        "HTTP agendado",
+        "control"
+      ],
+      [
+        "bq",
+        "report",
+        "resultados de consultas",
+        "data"
+      ],
+      [
+        "report",
+        "drive",
+        "publicação de CSV",
+        "data"
+      ],
+      [
+        "schedule",
+        "monitor",
+        "HTTP agendado",
+        "control"
+      ],
+      [
+        "metrics",
+        "monitor",
+        "volume pendente e idade das mensagens",
+        "data"
+      ],
+      [
+        "bq",
+        "monitor",
+        "atividade mais recente dos processadores",
+        "data"
+      ],
+      [
+        "monitor",
+        "chat",
+        "resumo de status",
+        "data"
+      ]
+    ]
+  }
+]

@@ -1,0 +1,26 @@
+digraph G {
+graph [rankdir=TB, bgcolor="transparent", pad="0.4", nodesep="0.45", ranksep="0.7", splines=polyline, fontname="Arial", outputorder=edgesfirst];
+node [shape=box, style="rounded,filled", fontname="Arial", fontsize=15, fontcolor="#102B44", color="#BFCFE1", penwidth=1.2, margin="0.24,0.17"];
+edge [fontname="Arial", fontsize=12, fontcolor="#34516D", color="#496C95", arrowsize=0.7, penwidth=1.2];
+validate [label="Cloud Functions:\nvalidação", fillcolor="#E7EFFF"];
+convert [label="Cloud Run:\nconversor de documentos", fillcolor="#DAE6FF"];
+store [label="Cloud Storage:\nartefatos de documentos", fillcolor="#EDF2F8"];
+vision [label="Cloud Vision:\nOCR", fillcolor="#D8F4EA"];
+vertex [label="Vertex AI:\nGemini", fillcolor="#D8F4EA"];
+mail [label="Gmail", fillcolor="#FFFFFF"];
+inbox [label="Cloud Functions:\nprocessamento da caixa de entrada", fillcolor="#E7EFFF"];
+drive [label="Google Drive:\ncorreções e referências", fillcolor="#FFFFFF"];
+reprocess [label="Cloud Functions:\nprocessamento de correções", fillcolor="#E7EFFF"];
+topic [label="Pub/Sub:\nsolicitações recebidas", fillcolor="#D5F0FA"];
+validate -> convert [label="solicitação de conversão", style=dashed];
+convert -> store [label="ler e gravar arquivos", style=solid];
+validate -> vision [label="extração de texto de imagens", style=solid];
+validate -> vertex [label="interpretação de documentos", style=solid];
+drive -> validate [label="modelos e dados de referência", style=solid];
+validate -> mail [label="notificação de correção", style=solid];
+mail -> inbox [label="anexos das respostas", style=solid];
+inbox -> drive [label="arquivos corrigidos", style=solid];
+drive -> reprocess [label="entradas substitutas", style=solid];
+reprocess -> store [label="atualizar artefatos da solicitação", style=solid];
+reprocess -> topic [label="republicar solicitação", style=solid];
+}
